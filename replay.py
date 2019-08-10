@@ -14,6 +14,7 @@ class PrioritizedMemory:
         self.cur_pos = 0
         self.maxlen = maxlen
         self.epsilon = epsilon
+        self.total_inserted = 0
         self.alpha = alpha
         self.root_count = self._size_by_depth(math.ceil(math.log2(self.maxlen))-1) 
         self.tree = [Node(0, None) for i in range(maxlen + self.root_count)]
@@ -46,6 +47,8 @@ class PrioritizedMemory:
         self.cur_pos += 1
         if self.cur_pos == self.maxlen:
             self.cur_pos = 0
+
+        self.total_inserted += 1
 
     def _is_leaf(self, index):
         if index >= self.root_count:
@@ -83,3 +86,9 @@ class PrioritizedMemory:
 
     def __str__(self):
         return ''.join([str(i.value) + ', ' for i in self.tree])
+
+    def __len__(self):
+        return min(self.total_inserted, self.maxlen)
+
+    def is_full(self):
+        return True if self.total_inserted >= self.maxlen else False
