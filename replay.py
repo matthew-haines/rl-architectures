@@ -30,19 +30,19 @@ class PrioritizedMemory:
 
         self._propogate(parent_index, value_change)
 
-    def insert(self, error, sample, compute_priority=True):
-        if compute_priority:
-            priority = (error + self.epsilon) ** self.alpha
-        else:
-            priority = error
+    def _compute_priority(self, error):
+        return (error + self.epsilon) ** self.alpha
 
-        index = self.root_count + self.cur_pos    
+    def insert(self, error, sample, compute_priority=True):
+        priority = self._compute_priority(error) if compute_priority else error
+        index = self.root_count + self.cur_pos
+        
         old_priority = self.tree[index].value
         self.tree[index].value = priority
         self.tree[index].data = sample
 
         self._propogate(index, priority - old_priority)
-
+        
         self.cur_pos += 1
         if self.cur_pos == self.maxlen:
             self.cur_pos = 0
@@ -61,7 +61,7 @@ class PrioritizedMemory:
 
     def _retrieve(self, index, value):
         if self._is_leaf(index):
-            return self.tree[index].data 
+            return (self.tree[index].data, index)
 
         if self.tree[self._left(index)].value >= value:
             return self._retrieve(self._left(index), value)
@@ -72,6 +72,14 @@ class PrioritizedMemory:
     def retrieve(self):
         rand_num = random.uniform(0, self.tree[0].value)
         return self._retrieve(0, rand_num)
+        # Returns tuple of (data, index)
+
+    def update(self, index, error):
+        old_priority = self.tree[index].value 
+        priority = self._compute_priority(error)
+        self.tree[index].value = priority
+
+        self._propogate(index, priority - old_priority)       
 
     def __str__(self):
         return ''.join([str(i.value) + ', ' for i in self.tree])
