@@ -21,7 +21,7 @@ class BasicDNN(nn.Module):
         x = F.relu(self.l1(x))
         x = F.relu(self.l2(x))
         x = self.l3(x)
-        return x.numpy()
+        return x.cpu().detach().numpy()
 
     def train_forward(self, x):
         x = F.relu(self.l1(x))
@@ -37,4 +37,4 @@ class BasicDNN(nn.Module):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        return (loss.item(), y_hat.numpy())
+        return (loss.item(), y_hat.cpu().detach().numpy())

@@ -1,74 +1,110 @@
-import torch
 import gym
+import torch
 import numpy as np
-import matplotlib.pyplot as plt
-import collections
 import random
+from networks import BasicDNN
+from collections import deque
+from torch.utils.tensorboard import SummaryWriter
+import gc
 
-class DQN:
+writer = SummaryWriter()
 
-    def __init__(self, network, action_space, replay_length=10000, gamma=1.0, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01):
-        # Parameters
-        self.action_space = action_space
+class Agent:
 
-        # Hyperparameters
-        self.gamma = gamma 
-        self.epsilon = epsilon 
+    def __init__(self, state_size, action_size, epsilon=1.0, epsilon_min=0.01, epsilon_decay=0.99, gamma=0.99, memory_length=10000, batch_size=32, update_freq=1000):
+        self.state_size = state_size
+        self.action_size = action_size
+
+        self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
-        self.epsilon_min = epsilon_min 
+        self.epsilon_min = epsilon_min
 
-        # Objects
-        self.replay_memory = collections.deque(maxlen=replay_length)
-        self.network = network 
+        self.gamma = gamma
+        self.update_freq = update_freq
 
-    def act(self, state):
-        if (random.random() < self.epsilon):
-            return random.randint(0, self.action_space-1)
+        self.batch_size = batch_size
 
-        action = torch.argmax(self.network.forward(state)).item()
-        return action
+        self.memory_length = memory_length
+        self.memory = deque(maxlen=memory_length)
 
-    def remember(self, state, action, reward, next_state, done):
-        self.replay_memory.append((state, action, reward, next_state, done))
+        self.network = BasicDNN(self.state_size, self.action_size)
+        self.target_network = BasicDNN(self.state_size, self.action_size)
 
-    def replay(self, batch_size):
-        x_batch, y_batch = [], []
-        batch = random.sample(self.replay_memory, min(len(self.replay_memory), batch_size))
-        for state, action, reward, next_state, done in batch:
-            y = self.network.forward(state)
-            y[action] = reward if done else reward + self.gamma * torch.max(self.network.forward(next_state)).item()
-            x_batch.append(state)
-            y_batch.append(y)
+        self.train_count = 0
 
-        self.network.train(torch.Tensor(x_batch), torch.stack(y_batch))
-
+    def _update_epsilon(self):
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
-    def run(self, env, batch_size, solved_count=np.inf, max_episodes=10000):
-        rewards = collections.deque(maxlen=100)
-        for _ in range(max_episodes):
-            done =  False
+    def get_action(self, state):
+        return random.randint(0, self.action_size-1) if random.random() <= self.epsilon else np.argmax(self.network.forward(state))
+
+    def _update_network(self):
+        self.target_network.load_state_dict(self.network.state_dict())
+
+    def remember(self, state, action, reward, next_state, done):
+        self.memory.append((state, action, reward, next_state, done))
+
+    def replay(self):
+        samples = random.sample(self.memory, self.batch_size)
+        x = []
+        y = []
+        for state, action, reward, next_state, done in samples:
+            x.append(state)
+            y_temp = self.network.forward(state)
+            y_temp[action] = reward if done else reward + self.gamma * \
+                self.target_network.forward(next_state)[np.argmax(self.network.forward(next_state))]
+
+            y.append(y_temp)
+
+        x = np.stack(x)
+        y = np.stack(y)
+        loss, _ = self.network.train(x, y)
+        
+        writer.add_scalar('Loss', loss, self.train_count)
+        self.train_count += 1
+
+        self._update_epsilon()
+
+    def run(self, env, episodes, episode_len):
+        step_count = 0
+        for e in range(episodes):
             state = env.reset()
-            total_rewards = 0
-            for step in range(201):
-                action = self.act(state)
-                next_state, reward, done, info = env.step(action)
-                reward = reward if not done else -10
-                total_rewards += reward
+            total_reward = 0
+            for step in range(episode_len):
+                action = self.get_action(state)
+                next_state, reward, done, _ = env.step(action)
                 self.remember(state, action, reward, next_state, done)
-                state = next_state
-                if done:
-                    if (_ % 25) == 0:
-                        print("Episode {}, Score={}".format(_, total_rewards))
-                    break
+                total_reward += reward
                 
-                step += 1
+                if step_count % self.update_freq:
+                    self._update_network()
 
-                if len(self.replay_memory) >= batch_size:
-                    self.replay(batch_size)
+                step_count += 1
 
-            rewards.append(total_rewards)
-            if sum(rewards) / len(rewards) >= solved_count:
-                print("Solved, episode {}".format(_))
+                if len(self.memory) >= self.batch_size:
+                    self.replay()
 
+                if done:
+                    break
+
+                state = next_state
+            
+            writer.add_scalar('Reward', total_reward, e)
+            if e % 10 == 0:
+                print('Episode: {}, Reward: {}'.format(e, total_reward))
+            
+            gc.collect()
+
+if __name__ == '__main__':
+    torch.random.manual_seed(2)
+    np.random.seed(2)
+
+    if torch.cuda.is_available():
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    
+    env = gym.make('CartPole-v0')
+    state_space = 4
+    action_space = 2
+    agent = Agent(state_space, action_space)
+    agent.run(env, 1000, 200)
