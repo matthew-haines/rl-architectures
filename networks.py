@@ -10,8 +10,8 @@ class BasicDNN(nn.Module):
         self.output_size = output_size
 
         self.l1 = nn.Linear(input_size, hidden_size)
-        self.l2 = nn.Linear(hidden_size, 12)
-        self.l3 = nn.Linear(12,  output_size)
+        self.l2 = nn.Linear(hidden_size, hidden_size)
+        self.l3 = nn.Linear(hidden_size,  output_size)
 
         self.optimizer = torch.optim.Adam(self.parameters())
         self.loss = torch.nn.MSELoss()

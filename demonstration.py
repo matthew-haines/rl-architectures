@@ -7,8 +7,11 @@ import time
 
 env = gym.make('CartPole-v0')
 
-model = BasicDNN(4, 12, 2)
-model.load_state_dict(torch.load(sys.argv[1], map_location=torch.device('cpu')))
+if torch.cuda.is_available():
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
+model = BasicDNN(4, int(sys.argv[2]), 2)
+model.load_state_dict(torch.load(sys.argv[1]))
 
 while True:
     state = env.reset()

@@ -11,7 +11,7 @@ writer = SummaryWriter()
 
 class Agent:
 
-    def __init__(self, state_size, action_size, hidden_size=24, epsilon=1.0, epsilon_min=0.05, epsilon_decay=0.99, gamma=0.9, memory_length=10000, batch_size=32, update_freq=500):
+    def __init__(self, state_size, action_size, hidden_size=256, epsilon=1.0, epsilon_min=0.05, epsilon_decay=0.99, gamma=0.9, memory_length=10000, batch_size=32, update_freq=500):
         self.state_size = state_size
         self.action_size = action_size
 
@@ -77,7 +77,7 @@ class Agent:
                     env.render()
                 action = self.get_action(state)
                 next_state, reward, done, _ = env.step(action)
-                self.remember(state, action, reward - abs(0.6 * next_state[0]), next_state, done)
+                self.remember(state, action, reward, next_state, done)
                 total_reward += reward
                 
                 if step_count % self.update_freq:
