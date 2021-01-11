@@ -1,11 +1,10 @@
-import numpy as np
 import random
 import math
 
 class Node:
 
     def __init__(self, value, data):
-        self.value = value 
+        self.value = value
         self.data = data
 
 class PrioritizedMemory:
@@ -16,7 +15,7 @@ class PrioritizedMemory:
         self.epsilon = epsilon
         self.total_inserted = 0
         self.alpha = alpha
-        self.root_count = self._size_by_depth(math.ceil(math.log2(self.maxlen))-1) 
+        self.root_count = self._size_by_depth(math.ceil(math.log2(self.maxlen))-1)
         self.tree = [Node(0, None) for i in range(maxlen + self.root_count)]
 
     def _size_by_depth(self, depth):
@@ -25,7 +24,7 @@ class PrioritizedMemory:
     def _propogate(self, index, value_change):
         parent_index = math.ceil(index / 2) - 1
         self.tree[parent_index].value += value_change
-        
+
         if parent_index == 0:
             return
 
@@ -37,13 +36,13 @@ class PrioritizedMemory:
     def insert(self, error, sample, compute_priority=True):
         priority = self._compute_priority(error) if compute_priority else error
         index = self.root_count + self.cur_pos
-        
+
         old_priority = self.tree[index].value
         self.tree[index].value = priority
         self.tree[index].data = sample
 
         self._propogate(index, priority - old_priority)
-        
+
         self.cur_pos += 1
         if self.cur_pos == self.maxlen:
             self.cur_pos = 0
@@ -53,12 +52,12 @@ class PrioritizedMemory:
     def _is_leaf(self, index):
         if index >= self.root_count:
             return True
-        
+
         return False
 
     def _left(self, index):
         return index * 2 + 1
-    
+
     def _right(self, index):
         return index * 2 + 2
 
@@ -68,17 +67,17 @@ class PrioritizedMemory:
 
         if self.tree[self._left(index)].value >= value:
             return self._retrieve(self._left(index), value)
-        
+
         else:
             return self._retrieve(self._right(index), value - self.tree[self._left(index)].value)
-        
+
     def retrieve(self):
         rand_num = random.uniform(0, self.tree[0].value)
         return self._retrieve(0, rand_num)
         # Returns tuple of (data, index)
 
     def update(self, index, error):
-        old_priority = self.tree[index].value 
+        old_priority = self.tree[index].value
         priority = self._compute_priority(error)
         self.tree[index].value = priority
 

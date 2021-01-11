@@ -2,7 +2,7 @@ import gym
 import torch
 import numpy as np
 import random
-from networks import BasicDNN
+from networkscpu import BasicDNN
 from collections import deque
 from torch.utils.tensorboard import SummaryWriter
 import gc
@@ -73,8 +73,7 @@ class Agent:
             state = env.reset()
             total_reward = 0
             for step in range(episode_len):
-                if e % 10 == 0:
-                    env.render()
+                env.render()
                 action = self.get_action(state)
                 next_state, reward, done, _ = env.step(action)
                 self.remember(state, action, reward, next_state, done)
@@ -110,9 +109,6 @@ if __name__ == '__main__':
     torch.random.manual_seed(2)
     np.random.seed(2)
 
-    if torch.cuda.is_available():
-        torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    
     env = gym.make('CartPole-v0')
     state_space = 4
     action_space = 2

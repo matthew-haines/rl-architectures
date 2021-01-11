@@ -2,3 +2,5 @@ __pycache__
 .vscode
 runs
 saved_models
+.DS_Store
+*.pyc

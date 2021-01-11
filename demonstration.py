@@ -2,7 +2,7 @@ import sys
 import gym
 import torch
 import numpy as np
-from networks import BasicDNN
+from networkscpu import BasicDNN
 import time
 
 env = gym.make('CartPole-v0')
